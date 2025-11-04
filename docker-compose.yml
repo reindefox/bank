@@ -1,0 +1,19 @@
+services:
+  report:
+    build:
+      context: .
+      dockerfile: services/report/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+
+  currency:
+    build:
+      context: .
+      dockerfile: services/currency/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+

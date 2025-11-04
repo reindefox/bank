@@ -1,11 +1,12 @@
-package com.reindefox.bank
+package com.reindefox.currency
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class BankApplication
+class CurrencyApplication
 
 fun main(args: Array<String>) {
-    runApplication<BankApplication>(*args)
+    runApplication<CurrencyApplication>(*args)
 }
+
