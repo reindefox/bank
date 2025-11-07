@@ -40,6 +40,17 @@ class ReportController(
     private val currencyService: CurrencyService
 ) {
 
+    @GetMapping("/help/pdf")
+    fun getHelpPdf(): ResponseEntity<ByteArray> {
+        val bytes = generateSimplePdf("Bank Report Service Help", listOf(
+            "Hi!"
+        ))
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=help.pdf")
+            .body(bytes)
+    }
+
     @GetMapping("/transactions")
     fun getTransactions(@RequestParam(required = false) accountId: String?): List<TransactionDto> {
         val transactions = reportService.getTransactions(accountId)
@@ -71,7 +82,6 @@ class ReportController(
         val account = reportService.getAccount(accountId)
         val analytics = reportService.getAccountAnalytics(accountId)
         
-        // Вызов вложенной функции - конвертация валюты через сервис валют
         val accountCurrency = account?.currency ?: "USD"
         val convertedBalance = if (accountCurrency != targetCurrency && account != null) {
             currencyService.convertCurrency(
