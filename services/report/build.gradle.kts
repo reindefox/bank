@@ -17,9 +17,18 @@ java {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    
+    // Database
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.postgresql:postgresql")
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
 
     // Simple PDF generation
     implementation("org.apache.pdfbox:pdfbox:3.0.3")
+    
+    // HTTP client for calling currency service
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

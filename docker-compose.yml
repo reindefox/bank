@@ -7,6 +7,10 @@ services:
       - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=default
+      # Database configuration - set these environment variables
+      # - DB_URL=jdbc:postgresql://bankdb.reindefox.fvds.ru/bank
+      # - DB_USERNAME=your_username
+      # - DB_PASSWORD=your_password
 
   currency:
     build:

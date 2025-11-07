@@ -38,3 +38,9 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Local configuration files with secrets ###
+**/application-local.properties
+**/application-local.yml
+**/.env
+**/.env.local

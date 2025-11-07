@@ -1,0 +1,9 @@
+# Example local configuration file
+# Copy this file to application-local.properties and fill in your actual values
+# This file should NOT be committed to git
+
+# Database configuration
+spring.datasource.url=jdbc:postgresql://bankdb.reindefox.fvds.ru/bank
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+

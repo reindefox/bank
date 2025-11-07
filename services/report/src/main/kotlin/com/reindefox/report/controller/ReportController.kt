@@ -1,9 +1,13 @@
 package com.reindefox.report.controller
 
+import com.reindefox.report.entity.Transaction
+import com.reindefox.report.service.CurrencyService
+import com.reindefox.report.service.ReportService
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.font.PDType1Font
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -31,51 +35,84 @@ data class AccountAnalyticsDto(
 
 @RestController
 @RequestMapping("/api/report")
-class ReportController {
-
-    @GetMapping("/help/pdf")
-    fun getHelpPdf(): ResponseEntity<ByteArray> {
-        val bytes = generateSimplePdf("Bank Report Service Help", listOf(
-            "Endpoints:",
-            "/api/report/transactions",
-            "/api/report/transactions/history",
-            "/api/report/analytics/{accountId}",
-            "/api/report/account/{accountId}/statement"
-        ))
-        return ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_PDF)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=help.pdf")
-            .body(bytes)
-    }
+class ReportController(
+    private val reportService: ReportService,
+    private val currencyService: CurrencyService
+) {
 
     @GetMapping("/transactions")
-    fun getTransactions(@RequestParam(required = false) accountId: String?): List<TransactionDto> =
-        listOf(
-            TransactionDto("t1", 100.0, "USD", "Salary"),
-            TransactionDto("t2", -25.5, "USD", "Groceries")
-        )
+    fun getTransactions(@RequestParam(required = false) accountId: String?): List<TransactionDto> {
+        val transactions = reportService.getTransactions(accountId)
+        return transactions.map { toDto(it) }
+    }
 
     @GetMapping("/transactions/history")
-    fun getTransactionHistory(@RequestParam(required = false) accountId: String?): List<TransactionDto> =
-        listOf(
-            TransactionDto("t0", -12.0, "USD", "Coffee"),
-            TransactionDto("t-1", -8.4, "USD", "Snacks")
-        )
+    fun getTransactionHistory(@RequestParam(required = false) accountId: String?): List<TransactionDto> {
+        val transactions = reportService.getTransactionHistory(accountId)
+        return transactions.map { toDto(it) }
+    }
 
     @GetMapping("/analytics/{accountId}")
-    fun getAccountAnalytics(@PathVariable accountId: String): AccountAnalyticsDto =
-        AccountAnalyticsDto(accountId, totalInflow = 1200.0, totalOutflow = 340.0, avgTransaction = 120.0)
+    fun getAccountAnalytics(@PathVariable accountId: String): AccountAnalyticsDto {
+        val analytics = reportService.getAccountAnalytics(accountId)
+        return AccountAnalyticsDto(
+            accountId = analytics.accountId,
+            totalInflow = analytics.totalInflow,
+            totalOutflow = analytics.totalOutflow,
+            avgTransaction = analytics.avgTransaction
+        )
+    }
 
     @PostMapping("/account/{accountId}/statement")
-    fun generateAccountStatement(@PathVariable accountId: String): ResponseEntity<ByteArray> {
+    fun generateAccountStatement(
+        @PathVariable accountId: String,
+        @RequestParam(required = false, defaultValue = "USD") targetCurrency: String
+    ): ResponseEntity<ByteArray> {
+        val account = reportService.getAccount(accountId)
+        val analytics = reportService.getAccountAnalytics(accountId)
+        
+        // Вызов вложенной функции - конвертация валюты через сервис валют
+        val accountCurrency = account?.currency ?: "USD"
+        val convertedBalance = if (accountCurrency != targetCurrency && account != null) {
+            currencyService.convertCurrency(
+                account.balance.toDouble(),
+                accountCurrency,
+                targetCurrency
+            ).block()?.amount ?: account.balance.toDouble()
+        } else {
+            account?.balance?.toDouble() ?: 0.0
+        }
+        
+        val lines = mutableListOf<String>().apply {
+            add("Account Statement")
+            add("Account ID: $accountId")
+            add("Account Number: ${account?.accountNumber ?: "N/A"}")
+            add("Balance: ${account?.balance ?: "0.00"} ${accountCurrency}")
+            if (accountCurrency != targetCurrency) {
+                add("Balance in $targetCurrency: $convertedBalance")
+            }
+            add("Total Inflow: ${analytics.totalInflow} ${accountCurrency}")
+            add("Total Outflow: ${analytics.totalOutflow} ${accountCurrency}")
+            add("Average Transaction: ${analytics.avgTransaction} ${accountCurrency}")
+        }
+        
         val bytes = generateSimplePdf(
             title = "Account Statement",
-            lines = listOf("Account: $accountId", "Period: demo", "Total: 860.0 USD")
+            lines = lines
         )
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=statement-$accountId.pdf")
             .body(bytes)
+    }
+    
+    private fun toDto(transaction: Transaction): TransactionDto {
+        return TransactionDto(
+            id = transaction.id,
+            amount = transaction.amount.toDouble(),
+            currency = transaction.currency,
+            description = transaction.description ?: ""
+        )
     }
 
     private fun generateSimplePdf(title: String, lines: List<String>): ByteArray {
@@ -84,7 +121,7 @@ class ReportController {
             doc.addPage(page)
             PDPageContentStream(doc, page).use { stream ->
                 stream.beginText()
-//                stream.setFont(PDType1Font.HELVETICA_BOLD, 18f)
+                stream.setFont(PDType1Font(Standard14Fonts.FontName.HELVETICA), 18f)
                 stream.newLineAtOffset(50f, 750f)
                 stream.showText(title)
                 stream.endText()
@@ -92,7 +129,7 @@ class ReportController {
                 var y = 720f
                 for (line in lines) {
                     stream.beginText()
-//                    stream.setFont(PDType1Font.HELVETICA, 12f)
+                    stream.setFont(PDType1Font(Standard14Fonts.FontName.HELVETICA), 12f)
                     stream.newLineAtOffset(50f, y)
                     stream.showText(line)
                     stream.endText()
