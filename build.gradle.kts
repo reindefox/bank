@@ -7,3 +7,11 @@ allprojects {
         mavenCentral()
     }
 }
+
+tasks.register("testAll") {
+    group = "verification"
+    description = "Runs all tests in all subprojects"
+    dependsOn(allprojects.flatMap { project ->
+        project.tasks.matching { it.name == "test" }
+    })
+}
